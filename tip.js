@@ -3,21 +3,28 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers, 
+        GatewayIntentBits.GuildPresences 
     ]
 });
 var config = require('./bot_config');
 const backend = require('./backend');
+var Big = require('big.js');
 
 client.login(config.bot_token);
 
-backend.Initialize();
-
+var coin_name = config.coin_name;
 var owner_id_1 = config.owner_id_1;
 var owner_id_2 = config.owner_id_2;
-var custom_message_limit = config.custom_message_length_limit; // 100 characters
+var custom_message_limit = config.custom_message_length_limit;
+var withdraw_min_amount = config.withdraw_min_amount;
+var wait_time_for_withdraw_confirm = config.wait_time_for_withdraw_confirm;
+var withdraw_tx_fees = config.withdraw_tx_fees;
 var log1 = config.log_1;
-var isBotListening = false;
+var isBotListening = true;
+
+backend.Initialize();
 
 client.on('ready', function () {
 	if (log1) console.log("Nirmata TipBot ready and loaded correctly! Hello, admin");
@@ -40,13 +47,9 @@ function isCallingBot(msg) {
 	} else { return false; }
 }
 
-function checkCommand(msg) {
-	if (!msg.guild) { // Проверяем, что сообщение из сервера
-        console.log("The command was not sent on the server.");
-        return;
-    }
+async function checkCommand(msg) {
 	if (isCallingBot(msg.content) == true) {
-		var arguments = msg.content.replace(/\s+/g,'.').trim().split('.');  // removes additional spaces
+		var arguments = msg.content.replace(/\s+/g,'.').trim().split('.');  
 		var command = arguments[1];
 		if (isBotListening == false && (msg.author.id == owner_id_1 || msg.author.id == owner_id_2)) {
 			if (command == "startlistening") {
@@ -71,7 +74,6 @@ function checkCommand(msg) {
 					}
 				});
 				break;
-
             case 'joinreward':
 				if (msg.author.id == owner_id_1 || msg.author.id == owner_id_2){
                     var user = arguments[2];
@@ -85,17 +87,20 @@ function checkCommand(msg) {
                     var myname = msg.author.username;
                     if (tiptarget != null) {
 						backend.getBalance(msg.author.id, msg, function (data) {
+							if (!data) {
+								msg.reply({ content: "Failed to retrieve your balance." });
+								return;
+							}
                             backend.TipSomebody(msg, msg.author.id, tiptarget, user, myname, amount, function (success, message) {
                                     if (success == true) {
-                                            msg.channel.send({content:"<@" + tiptarget + "> has been tipped " + formatDisplayBalance(amount) + " " + coin_name + " :moneybag: by " + msg.author + " Thank you for join our community, here's your join reward. Have a nice stay. :beer: "});
-                                                    msg.author.send({content:"Current balance is " + formatDisplayBalance(data.balance) + " " + coin_name + "!" + "\n <@" + tiptarget + "> has been succesfully tipped " + formatDisplayBalance(amount) + " " + coin_name + "!" + custom_message + "\n Left balance " + formatDisplayBalance((data.balance)-amount) + " " + coin_name + "!"});
+                                            msg.channel.send({content:"<@" + tiptarget + "> has been tipped " + backend.formatDisplayBalance(amount) + " " + coin_name + " :moneybag: by <@" + msg.author.id + "> Thank you for join our community, here's your join reward. Have a nice stay. :beer: "});
+                                                    msg.author.send({content:"Current balance is " + backend.formatDisplayBalance(data.balance) + " " + coin_name + "!" + "\n <@" + tiptarget + "> has been succesfully tipped " + backend.formatDisplayBalance(amount) + " " + coin_name + "!" + custom_message + "\n Left balance " + backend.formatDisplayBalance((data.balance)-amount) + " " + coin_name + "!"});
                                     } else { msg.channel.send({content:message}); }
                                 })});
                     } else {
                             msg.reply({ content: "User \"" + user + "\" not found :( . Check if the name is correct" });
                     }}
                     break;
-
 			case 'adminhelp':
 				backend.isAdmin(msg.author.id, function (result) {
 					if (result == true) {
@@ -151,41 +156,68 @@ function checkCommand(msg) {
           		break;
 			case 'balance':
 				backend.getBalance(msg.author.id, msg, function (data) {
-					msg.author.send({ content: "Hey! Your balance is " + formatDisplayBalance(data.balance) + " " + coin_name + "!" });
+					if (!data) {
+						msg.reply({ content: "Failed to retrieve your balance." });
+						return;
+					}
+					msg.author.send({ content: "Hey! Your balance is " + backend.formatDisplayBalance(data.balance) + " " + coin_name + "!" });
 				});
 				break;
   			case 'deposit':
 				backend.getBalance(msg.author.id, msg, function (data) {
+					if (!data) {
+						msg.reply({ content: "Failed to retrieve your balance." });
+						return;
+					}
 					msg.author.send({ content: "Hey! For deposit into the tip bot, use address: " + data.useraddress });
 				});
 				break;
 			case 'tip':
-				var user = arguments[2];
-				var amount = arguments[3];
-				var custom_message = "";
-				console.log(Big(amount))
-				try {
-					Big(amount);
-				} catch (error) { msg.reply({ content: "Oops! Invalid syntax" }); return; }
-				if (user == null) { msg.reply({ content: "Oops! There is no such user!" }); return; }
-				if (amount == null) { msg.reply({ content: "Oops! The amount is not specified or incorrectly specified." }); return; }
-				try { user = msg.mentions.users.first().username; } catch (error) { msg.reply({ content: "Oops! Invalid syntax" }); return; } /// check to avoid bot crash
-				try { custom_message = getCustomMessageFromTipCommand(arguments); } catch (err) { msg.reply({ content: "Oops! Something happened" }); return; }
-				var tiptarget = msg.mentions.users.first().id;
-				var myname = msg.author.username;
-				if (tiptarget != null) {
-					backend.getBalance(msg.author.id, msg, function (data) {
-					backend.TipSomebody(msg, msg.author.id,  tiptarget, user, myname, amount, function (success, message) {
-						if (success == true) {
-							msg.channel.send({content:"<@" + tiptarget + "> has been tipped " + backend.formatDisplayBalance(amount) + " " + coin_name + " :moneybag: by " + msg.author + custom_message});
-							msg.author.send({content:"Current balance is " + backend.formatDisplayBalance(data.balance) + " " + coin_name + "!" + "\n <@" + tiptarget + "> has been succesfully tipped " + backend.formatDisplayBalance(amount) + " " + coin_name + "!" + custom_message + "\n Left balance " + backend.formatDisplayBalance((data.balance)-amount) + " " + coin_name + "!"});
-						} else { msg.channel.send({content:message}); }
-
-					})});
-				} else {
-					msg.reply("User \"" + user + "\" not found :( . Check if the name is correct");
-				}
-				break;
+					var user = arguments[2];
+					var amount = arguments[3];
+					var custom_message = "";
+				
+					if (!user || !msg.mentions.users.size) {
+						msg.reply({ content: "Oops! There is no such user!" });
+						return;
+					}
+				
+					if (!amount) {
+						msg.reply({ content: "Oops! The amount is not specified or incorrectly specified." });
+						return;
+					}
+				
+					try {
+						// Проверяем, что amount можно преобразовать в число
+						amount = Big(amount);
+					} catch (error) {
+						msg.reply({ content: "Oops! Invalid syntax: Amount should be a number." });
+						return;
+					}
+				
+					user = msg.mentions.users.first().username; // Теперь безопасно получаем username
+					var tiptarget = msg.mentions.users.first().id;
+					var myname = msg.author.username;
+				
+					if (tiptarget) {
+						backend.getBalance(msg.author.id, msg, function (data) {
+							if (!data) {
+								msg.reply({ content: "Failed to retrieve your balance." });
+								return;
+							}
+							backend.TipSomebody(msg, msg.author.id, tiptarget, user, myname, amount.toString(), function (success, message) {
+								if (success) {
+									msg.channel.send({content:"<@" + tiptarget + "> has been tipped " + backend.formatDisplayBalance(amount) + " " + coin_name + " :moneybag: by <@" + msg.author.id + "> " + custom_message});
+									msg.author.send({content:"Current balance is " + backend.formatDisplayBalance(data.balance) + " " + coin_name + "!" + "\n <@" + tiptarget + "> has been successfully tipped " + backend.formatDisplayBalance(amount) + " " + coin_name + "!" + custom_message + "\n Left balance " + backend.formatDisplayBalance((data.balance)-amount) + " " + coin_name + "!"});
+								} else {
+									msg.channel.send({content:message});
+								}
+							});
+						});
+					} else {
+						msg.reply({ content: "User \"" + user + "\" not found :( . Check if the name is correct" });
+					}
+					break;
 			case 'beer':
 					var user = arguments[2];
 					var amount = 5;
@@ -198,10 +230,14 @@ function checkCommand(msg) {
 					var myname = msg.author.username;
 					if (tiptarget != null) {
 						backend.getBalance(msg.author.id, msg, function (data) {
+							if (!data) {
+								msg.reply({ content: "Failed to retrieve your balance." });
+								return;
+							}
 						backend.TipSomebody(msg, msg.author.id, tiptarget, user, myname, amount, function (success, message) {
 							if (success == true) {
-								msg.channel.send({content:"<@" + tiptarget + "> has been tipped " + formatDisplayBalance(amount) + " " + coin_name + " :moneybag: by " + msg.author + " to have a good one. :beer: "});
-									msg.author.send({content:"Current balance is " + formatDisplayBalance(data.balance) + " " + coin_name + "!" + "\n <@" + tiptarget + "> has been succesfully tipped " + formatDisplayBalance(amount) + " " + coin_name + "!" + custom_message + "\n Left balance " + formatDisplayBalance((data.balance)-amount) + " " + coin_name + "!"});
+								msg.channel.send({content:"<@" + tiptarget + "> has been tipped " + backend.formatDisplayBalance(amount) + " " + coin_name + " :moneybag: by <@" + msg.author.id + "> to have a good one. :beer: "});
+								msg.author.send({content:"Current balance is " + backend.formatDisplayBalance(data.balance) + " " + coin_name + "!" + "\n <@" + tiptarget + "> has been succesfully tipped " + backend.formatDisplayBalance(amount) + " " + coin_name + "!" + custom_message + "\n Left balance " + backend.formatDisplayBalance((data.balance)-amount) + " " + coin_name + "!"});
 							} else { msg.channel.send({content:message}); }
 
 						})});
@@ -215,35 +251,23 @@ function checkCommand(msg) {
 				});
 				break;
 			case 'withdraw':
-				try {
-					if (Big(arguments[3]).lt(Big(withdraw_min_amount))) {
-						msg.author.send({ content: "Withdrawal error : Withdrawal amount is below minimum withdrawal amount" }); return;
+					try {
+						if (Big(arguments[3]).lt(Big(withdraw_min_amount))) {
+							msg.author.send({ content: "Withdrawal error: Withdrawal amount is below minimum withdrawal amount" });
+							return;
+						}
+					} catch (error) {
+						msg.author.send({ content: "Syntax error" });
+						return;
 					}
-				} catch (error) { msg.author.send({ content: "Syntax error" }); return; }
-				msg.author.send({ content: "You are going to withdraw " + arguments[3] + " " + coin_name + ". The blockchain transaction fee deducted from your withdrawal amount is " + withdraw_tx_fees + " . Type \"yes\" to confirm, or \"no\" to cance; the request "}).then(() => {
-					msg.channel.awaitMessages(response => response.guild === null && response.author.id == msg.author.id && (response.content === 'yes' || response.content === "no"), {
-						max: 1,
-						time: wait_time_for_withdraw_confirm,
-						errors: ['time'],
-					})
-						.then((collected) => {
-							if (collected.first().content == "yes") {
-								backend.withDraw(msg.author.id, arguments[2], arguments[3], function (success, txhash) {
-									if (success == true) {
-										msg.author.send({ content: "Your withdrawal request was successfuly executed and your funds are on the way :money_with_wings: . TxHash is https://explorer.nirmata-network.com/transaction/" + txhash });
-									} else {
-										msg.author.send({ content: "An error has occured :scream: , error code is: " + txhash });
-									}
-								});
-							} else if (collected.first().content == "no") {
-								msg.author.send({ content: "Your withdrawal request has been canceled at your request :confused: " });
-							}
-						})
-						.catch(() => {
-							msg.channel.send({content:'The withdrawal request was cancelled because you did not confirm :thinking: '});
-						});
-				});
-				break;
+					backend.withDraw(msg.author.id, arguments[2], arguments[3], function (success, txhash) {
+						if (success) {
+							msg.author.send({ content: "Your withdrawal request was successfully executed and your funds are on the way :money_with_wings:. TxHash is https://explorer.nirmata-network.com/transaction/" + txhash });
+						} else {
+							msg.author.send({ content: "An error has occurred :scream:, error code is: " + txhash });
+						}
+					});
+					break;
 			case 'addadmin':
 				var user = arguments[2];
 				if (user != null && (msg.author.id == owner_id_1 || msg.author.id == owner_id_2)) {
@@ -302,39 +326,26 @@ function checkCommand(msg) {
 					}
 				});
 				break;
-				case 'distribute':
+			case 'distribute':
 					if (!msg.guild) {
 						msg.reply({ content: "This command can only be used in a server." });
 						return;
 					}
-				
 					const totalCoins = parseFloat(arguments[2]);
 					if (isNaN(totalCoins) || totalCoins <= 0) {
 						msg.reply({ content: "Specify the correct number of coins to distribute." });
 						return;
 					}
-				
-					// Используем guild.fetchMembers() для получения всех участников
-					msg.guild.members.fetch().then(members => {
-						const nirUserRole = msg.guild.roles.cache.find(role => role.name === "NiR User");
-						if (!nirUserRole) {
-							msg.reply({ content: "Role 'NiR User' not found on the server." });
-							return;
-						}
-					
-						const onlineMembersWithRole = members.filter(member =>
-							member.roles.cache.has(nirUserRole.id) &&
-							member.presence.status === 'online' &&
-							!member.user.bot
+					msg.guild.members.fetch({ time: 120000 }).then(members => {
+						const onlineMembers = members.filter(member =>
+							member.presence && member.presence.status === 'online' && !member.user.bot
 						);
-					
-						if (onlineMembersWithRole.size === 0) {
-							msg.reply({ content: "There are no online users with the 'NiR User' role on the server." });
+						if (onlineMembers.size === 0) {
+							msg.reply({ content: "There are no online users on the server." });
 							return;
 						}
-				
-						const coinsPerUser = totalCoins / onlineMembersWithRole.size;
-						onlineMembersWithRole.forEach(member => {
+						const coinsPerUser = totalCoins / onlineMembers.size;
+						onlineMembers.forEach(member => {
 							const tiptarget = member.id;
 							const myname = msg.author.username;
 							backend.getBalance(msg.author.id, msg, function (data) {
@@ -342,24 +353,41 @@ function checkCommand(msg) {
 									msg.reply({ content: "Failed to retrieve your balance." });
 									return;
 								}
-				
 								backend.TipSomebody(msg, msg.author.id, tiptarget, member.user.username, myname, coinsPerUser, function (success, message) {
 									if (success) {
-										msg.channel.send({content:`<@${tiptarget}> has been tipped ${backend.formatDisplayBalance(coinsPerUser)} ${coin_name} :moneybag: by ${msg.author}`});
-										msg.author.send({content:`Current balance is ${backend.formatDisplayBalance(data.balance - coinsPerUser)} ${coin_name}!\n<@${tiptarget}> has been successfully tipped ${backend.formatDisplayBalance(coinsPerUser)} ${coin_name}!`});
-										// Отправка личного сообщения пользователю о получении чаевых
-										member.user.send({content:`You have received ${backend.formatDisplayBalance(coinsPerUser)} ${coin_name} in tips from ${msg.author.username}!`});
+										msg.channel.send({content:`<@${tiptarget}> has been tipped ${backend.formatDisplayBalance(coinsPerUser)} ${coin_name} :moneybag: by <@${msg.author.id}>`});
+										msg.author.send({content:`Current balance is ${backend.formatDisplayBalance(data.balance - coinsPerUser)} ${coin_name}!\n<@${tiptarget}> has been successfully tipped ${backend.formatDisplayBalance(coinsPerUser)} ${coin_name}!`})
+											.catch(error => {
+												console.error("Failed to send DM to author:", error);
+											});
+										member.user.send({content:`You have received ${backend.formatDisplayBalance(coinsPerUser)} ${coin_name} in tips from ${msg.author.username}!`})
+											.catch(error => {
+												console.error("Failed to send DM to recipient:", error);
+												msg.channel.send({content:`Failed to send a DM to <@${member.id}>. They might have DMs disabled or have blocked the bot.`});
+											});
 									} else {
 										msg.channel.send({content:message});
 									}
 								});
 							});
 						});
-						msg.channel.send({content:`Each online user with the 'NiR User' role has received ${coinsPerUser.toFixed(2)} ${coin_name} coins.`});
+						msg.channel.send({content:`Each online user has received ${coinsPerUser.toFixed(2)} coins.`});
 					}).catch(error => {
 						console.error("Failed to fetch members:", error);
 						msg.reply({ content: "Failed to execute the command due to an internal error." });
 					});
+					break;
+				case 'membercount':
+					if (!msg.guild) {msg.reply("This command can only be used on the server.");return;}
+					try {
+						const members = await msg.guild.members.fetch();
+						const totalMembers = members.size;
+						const onlineMembers = members.filter(member => member.presence?.status === 'online').size;
+						msg.channel.send(`The total number of participants on the server: ${totalMembers}\nNumber of participants in the network: ${onlineMembers}`);
+					} catch (error) {
+						console.error("Error while fetching data:", error);
+						msg.reply("An error occurred while executing the command.");
+					}
 					break;
 		}
 	}

@@ -18,8 +18,6 @@ var coin_total_units = config.coin_total_units;
 var coin_display_units = config.coin_display_units;
 var server_wallet_address = config.server_wallet_address;
 var withdraw_tx_fees = config.withdraw_tx_fees;
-var withdraw_min_amount = config.withdraw_min_amount;
-var wait_time_for_withdraw_confirm = config.wait_time_for_withdraw_confirm;
 var log1 = config.log_1;
 var log3 = config.log_3;
 var db;
@@ -55,7 +53,6 @@ function Initialize() {
 			if (log1) console.log("Collection admins successfully created or exists!");
 		});
 		if (dbobj != null) {
-			isBotListening = true;
 			db = dbobj;
 			if (log3) { console.log("Database connected sucessfuly. Bot started listening"); }
 		}
@@ -515,3 +512,35 @@ function getBalance(authorId, msg, callback) {
 		});
 	});
 }
+
+module.exports = {
+    Initialize,
+    getBalance,
+    getUserObject,
+    getUserObjectFromPaymentId,
+    addBalance,
+    minusBalance,
+    TipSomebody,
+    formatDisplayBalance,
+    getReadableFloatBalanceFromWalletFormat,
+    UpdateBalanceForUser,
+    createNewUser,
+    checkTargetExistsIfNotCreate,
+    addAdmin,
+    removeAdmin,
+    isAdmin,
+    generateNewPaymentIdForUser,
+    addGeneralEvent,
+    switchTipSend,
+    switchTipReceive,
+    convertToSystemValue,
+    logLocalTransaction,
+    logBlockChainTransaction,
+    getBlockInfo,
+    get_height,
+    getWalletInfo,
+    getWalletFormatFromBigNumber,
+    isBlockMatured,
+    withDraw
+};
+
