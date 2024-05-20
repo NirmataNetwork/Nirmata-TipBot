@@ -1,0 +1,6 @@
+@echo off
+:restart
+echo Starting the bot...
+node tip.js
+echo The bot has crashed. Restarting...
+goto restart
