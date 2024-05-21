@@ -21,6 +21,7 @@ var withdraw_tx_fees = config.withdraw_tx_fees;
 var log1 = config.log_1;
 var log3 = config.log_3;
 var db;
+var tip_enabled = true;
 
 function Initialize() {
 	Wallet.getBalance().then(function (balance) {if (log1) console.log("Stats for admins - current balance: " + balance.balance + " " + coin_name);});
@@ -331,51 +332,77 @@ function checkTargetExistsIfNotCreate(targetId, callback) {
 	});
 }
 
+var tip_enabled = true;
+
 function TipSomebody(msg, authorId, tipTarget, tiptargetname, tipperauthorname, transaction_amount, callback) {
-	var authorbalance;
-	if (authorId == tipTarget) { callback(false, "Sorry folk, but you can't tip yourself"); return; }
-	checkTargetExistsIfNotCreate(tipTarget, function () { /// check if tipper target exists, if not , create it with balance 0
-		checkTargetExistsIfNotCreate(authorId, function () { /// check if tipper author exists, if not , create it with balance 0
-			var transactionamount = new Big(Big(transaction_amount).toFixed(coin_total_units));
-			if (transactionamount <= 0) { callback(false, "Sorry but you can't tip negative balance"); return; }
-			getBalance(msg.author.id, msg, function (data) {
-				getUserObject(tipTarget, function (data2) {
-					if (data.cantip == 0) { callback(false, "You aren't allowed to make a tip"); return; } // Check if the tipper is allowed to tip
-					if (data2.canreceivetip == 0) { callback(false, "You can't tip that person"); return; } // Check if the tip target can receive tip?
-					authorbalance = new Big(data.balance);
-					console.log(authorbalance);
-					console.log(transactionamount);
-					console.log(authorbalance.gte(transactionamount));
-					if (authorbalance.gte(transactionamount)) {
-						var dbo = db.db("TipBot");
-						var myquery = { userid: authorId };
-						console.log("Internal transaction processing,  amount : " + transactionamount);
-						var authorNewBalance = Big(authorbalance.minus(transactionamount)).toFixed(coin_total_units);
-						var newvalues = { $set: { balance: authorNewBalance } };
-						dbo.collection("users").updateOne(myquery, newvalues, function (err, res) {
-							getUserObject(tipTarget, function (tipperdata) {
-								var newtiptargetbalance = Big(tipperdata.balance).plus(transactionamount);
-								var tipperQuery = { userid: tipTarget };
-								console.log(tipTarget);
-								console.log("Nazdaar " + newtiptargetbalance);
-								var tipperNewValue = { $set: { balance: newtiptargetbalance.toFixed(coin_total_units) } };
-								dbo.collection("users").updateOne(tipperQuery, tipperNewValue, function (err, res) {
-									if (err) throw err;
-									callback(true, "");
-									logLocalTransaction(authorId, tipTarget, tipperauthorname, tiptargetname, transactionamount.toString()); /// Log this transaction
-								});
-							});
-							if (err) throw err;
-							console.log("1 user updated");
-						});
-					} else {
-						msg.reply({ content: "You don't have enough balance for that :( " });
-						callback(false);
-					}
-				});
-			});
-		});
-	});
+    if (!tip_enabled) {
+        setTimeout(() => {
+            TipSomebody(msg, authorId, tipTarget, tiptargetname, tipperauthorname, transaction_amount, callback);
+        }, 1000);
+        return;
+    }
+
+    tip_enabled = false;
+
+    var authorbalance;
+    if (authorId == tipTarget) {
+        callback(false, "Sorry folk, but you can't tip yourself");
+        tip_enabled = true; 
+        return;
+    }
+
+    checkTargetExistsIfNotCreate(tipTarget, function () {
+        checkTargetExistsIfNotCreate(authorId, function () {
+            var transactionamount = new Big(Big(transaction_amount).toFixed(coin_total_units));
+            if (transactionamount <= 0) {
+                callback(false, "Sorry but you can't tip negative balance");
+                tip_enabled = true;
+                return;
+            }
+            getBalance(msg.author.id, msg, function (data) {
+                getUserObject(tipTarget, function (data2) {
+                    if (data.cantip == 0) {
+                        callback(false, "You aren't allowed to make a tip");
+                        tip_enabled = true;
+                        return;
+                    }
+                    if (data2.canreceivetip == 0) {
+                        callback(false, "You can't tip that person");
+                        tip_enabled = true; 
+                        return;
+                    }
+                    authorbalance = new Big(data.balance);
+                    if (authorbalance.gte(transactionamount)) {
+                        var dbo = db.db("TipBot");
+                        var myquery = { userid: authorId };
+                        console.log("Internal transaction processing, amount : " + transactionamount);
+                        var authorNewBalance = Big(authorbalance.minus(transactionamount)).toFixed(coin_total_units);
+                        var newvalues = { $set: { balance: authorNewBalance } };
+                        dbo.collection("users").updateOne(myquery, newvalues, function (err, res) {
+                            getUserObject(tipTarget, function (tipperdata) {
+                                var newtiptargetbalance = Big(tipperdata.balance).plus(transactionamount);
+                                var tipperQuery = { userid: tipTarget };
+                                
+                                var tipperNewValue = { $set: { balance: newtiptargetbalance.toFixed(coin_total_units) } };
+                                dbo.collection("users").updateOne(tipperQuery, tipperNewValue, function (err, res) {
+                                    if (err) throw err;
+                                    callback(true, "");
+                                    logLocalTransaction(authorId, tipTarget, tipperauthorname, tiptargetname, transactionamount.toString()); /// Log this transaction
+                                    tip_enabled = true; 
+                                });
+                            });
+                            if (err) throw err;
+                            console.log("1 user updated");
+                        });
+                    } else {
+                        msg.reply({ content: "You don't have enough balance for that :( " });
+                        callback(false);
+                        tip_enabled = true;
+                    }
+                });
+            });
+        });
+    });
 }
 
 function formatDisplayBalance(balance) {
