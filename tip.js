@@ -542,6 +542,16 @@ async function checkCommand(msg) {
 							}
 							backend.TipSomebody(msg, msg.author.id, tiptarget, member.user.username, myname, coinsPerUser, function (success, message) {
 								if (success) {
+									msg.channel.send({content:`<@${tiptarget}> has been tipped ${backend.formatDisplayBalance(coinsPerUser)} ${coin_name} :moneybag: by <@${msg.author.id}>`});
+									msg.author.send({content:`Current balance is ${backend.formatDisplayBalance(data.balance - coinsPerUser)} ${coin_name}!\n<@${tiptarget}> has been successfully tipped ${backend.formatDisplayBalance(coinsPerUser)} ${coin_name}!`})
+											.catch(error => {
+												console.error("Failed to send DM to author:", error);
+											});
+									member.user.send({content:`You have received ${backend.formatDisplayBalance(coinsPerUser)} ${coin_name} in tips from ${msg.author.username}!`})
+											.catch(error => {
+												console.error("Failed to send DM to recipient:", error);
+												msg.channel.send({content:`Failed to send a DM to <@${member.id}>. They might have DMs disabled or have blocked the bot.`});
+											});
 									count++;
 								}
 								if (count === onlineMembers.size) {
