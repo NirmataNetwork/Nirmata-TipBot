@@ -1,5 +1,5 @@
 {
-  "name": "@nirmata/nirmata-rpc",
+  "name": "nirmata-rpc",
   "version": "1.0.0",
   "description": "Nirmata RPC Daemon and RPC Wallet Javascript Library",
   "main": "index.js",
