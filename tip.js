@@ -67,6 +67,7 @@ async function checkCommand(msg) {
 					return;
 				}
 				isCommandRunning = true;
+				msg.react('✅').catch(console.error);
 				if (msg.author.id == owner_id_1 || msg.author.id == owner_id_2) {
 					backend.getWalletInfo(function (walletmessage) {
 						msg.author.send({ content: walletmessage });
@@ -80,6 +81,7 @@ async function checkCommand(msg) {
 					return;
 				}
 				isCommandRunning = true;
+				msg.react('✅').catch(console.error);
 				backend.isAdmin(msg.author.id, function (result) {
 					if (result == true) {
 						isBotListening = false;
@@ -94,6 +96,7 @@ async function checkCommand(msg) {
 					return;
 				}
 				isCommandRunning = true;
+				msg.react('✅').catch(console.error);
 				if (msg.author.id !== owner_id_1 && msg.author.id !== owner_id_2) {
 					msg.reply({ content: "Only owners can execute this command." });
 					isCommandRunning = false;
@@ -143,6 +146,7 @@ async function checkCommand(msg) {
 					return;
 				}
 				isCommandRunning = true;
+				msg.react('✅').catch(console.error);
 				backend.isAdmin(msg.author.id, function (result) {
 					if (result == true) {
 						msg.author.send({ content:
@@ -170,6 +174,7 @@ async function checkCommand(msg) {
 					return;
 				}
 				isCommandRunning = true;
+				msg.react('✅').catch(console.error);
 				msg.channel.send({content:
 					"__**🤖 Hello! This is Nirmata TIP Bot version 1.0**__\n" +
 					"Created by Nirmata Network."
@@ -182,6 +187,7 @@ async function checkCommand(msg) {
 					return;
 				}
 				isCommandRunning = true;
+				msg.react('✅').catch(console.error);
 				console.log('** Network info message sent');
 				msg.channel.send({content:"Whoops! Please try again later. Current network height: " + (Daemon.height) + " 😄"});
 				isCommandRunning = false;
@@ -192,6 +198,7 @@ async function checkCommand(msg) {
 					return;
 				}
 				isCommandRunning = true;
+				msg.react('✅').catch(console.error);
 				msg.channel.send({content:
 					"__**📌 Hello! Welcome to the Nirmata TipBot Help Section!**__\n\n" +
 					"**Commands List:**\n" +
@@ -215,6 +222,7 @@ async function checkCommand(msg) {
 					return;
 				}
 				isCommandRunning = true;
+				msg.react('✅').catch(console.error);
             	backend.get_height(function (heightmessage) {
               		msg.channel.send({content:heightmessage});
 					isCommandRunning = false;
@@ -226,6 +234,7 @@ async function checkCommand(msg) {
 					return;
 				}
 				isCommandRunning = true;
+				msg.react('✅').catch(console.error);
 				backend.getBalance(msg.author.id, msg, function (data) {
 					if (!data) {
 						msg.reply({ content: "Failed to retrieve your balance." });
@@ -242,6 +251,7 @@ async function checkCommand(msg) {
 					return;
 				}
 				isCommandRunning = true;
+				msg.react('✅').catch(console.error);
 				backend.getBalance(msg.author.id, msg, function (data) {
 					if (!data) {
 						msg.reply({ content: "Failed to retrieve your balance." });
@@ -258,7 +268,7 @@ async function checkCommand(msg) {
 					return;
 				}
 				isCommandRunning = true;
-
+				msg.react('✅').catch(console.error);
 				var user = arguments[2];
 				var amount = arguments[3];
 				var custom_message = "";
@@ -315,7 +325,7 @@ async function checkCommand(msg) {
 					return;
 				}
 				isCommandRunning = true;
-
+				msg.react('✅').catch(console.error);
 				var user = arguments[2];
 				var amount = 5;
 				var custom_message = "";
@@ -359,6 +369,7 @@ async function checkCommand(msg) {
 					return;
 				}
 				isCommandRunning = true;
+				msg.react('✅').catch(console.error);
 				backend.getBlockInfo(function (walletmessage) {
 					msg.channel.send({content:walletmessage});
 					isCommandRunning = false;
@@ -370,7 +381,7 @@ async function checkCommand(msg) {
 					return;
 				}
 				isCommandRunning = true;
-
+				msg.react('✅').catch(console.error);
 				try {
 					if (Big(arguments[3]).lt(Big(withdraw_min_amount))) {
 						msg.author.send({ content: "Withdrawal error: Withdrawal amount is below minimum withdrawal amount" });
@@ -398,6 +409,7 @@ async function checkCommand(msg) {
 					return;
 				}
 				isCommandRunning = true;
+				msg.react('✅').catch(console.error);
 				var user = arguments[2];
 				if (user != null && (msg.author.id == owner_id_1 || msg.author.id == owner_id_2)) {
 					backend.addAdmin(msg.author.id, user, function (callbackmsg) {
@@ -415,7 +427,7 @@ async function checkCommand(msg) {
 					return;
 				}
 				isCommandRunning = true;
-
+				msg.react('✅').catch(console.error);
 				var user = arguments[2];
 				if (user != null && (msg.author.id == owner_id_1 || msg.author.id == owner_id_2)) {
 					backend.removeAdmin(msg.author.id, user, function (callbackmsg) {
@@ -433,7 +445,7 @@ async function checkCommand(msg) {
 					return;
 				}
 				isCommandRunning = true;
-
+				msg.react('✅').catch(console.error);
 				var user = arguments[2];
 				if (user == null) { 
 					msg.reply({ content: "Oops! Invalid syntax" }); 
@@ -462,7 +474,7 @@ async function checkCommand(msg) {
 					return;
 				}
 				isCommandRunning = true;
-
+				msg.react('✅').catch(console.error);
 				var user = arguments[2];
 				var decision = arguments[3];
 				if (user == null || decision == null) { 
@@ -488,7 +500,7 @@ async function checkCommand(msg) {
 					return;
 				}
 				isCommandRunning = true;
-
+				msg.react('✅').catch(console.error);
 				var user = arguments[2];
 				var decision = arguments[3];
 				backend.isAdmin(msg.author.id, function (condition) {
@@ -513,6 +525,7 @@ async function checkCommand(msg) {
 					return;
 				}
 				isCommandRunning = true;
+				msg.react('✅').catch(console.error);
 			 
 				const totalCoins = parseFloat(arguments[2]);
 				if (isNaN(totalCoins) || totalCoins <= 0) {
@@ -578,7 +591,7 @@ async function checkCommand(msg) {
 					return;
 				}
 				isCommandRunning = true;
-
+				msg.react('✅').catch(console.error);
 				try {
 					const members = await msg.guild.members.fetch();
 					const totalMembers = members.size;
