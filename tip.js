@@ -534,14 +534,21 @@ async function checkCommand(msg) {
 					return;
 				}
 				msg.guild.members.fetch({ time: 120000 }).then(members => {
-					const onlineMembers = members.filter(member =>
-						member.presence && member.presence.status === 'online' && !member.user.bot
+					const onlineMembers = members.filter(member => 
+						!member.user.bot &&
+						(
+							member.presence?.status !== 'offline'
+						)
 					);
+					
 					if (onlineMembers.size === 0) {
 						msg.reply({ content: "There are no online users on the server." });
 						isCommandRunning = false;
 						return;
 					}
+
+					msg.channel.send({content: `Starting distribution of ${totalCoins} ${coin_name} between ${onlineMembers.size} members. Each member will receive ${backend.formatDisplayBalance(totalCoins / onlineMembers.size)} ${coin_name}`});
+
 					const coinsPerUser = totalCoins / onlineMembers.size;
 					let count = 0; 
 			 
